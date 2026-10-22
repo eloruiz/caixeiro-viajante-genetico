@@ -33,8 +33,9 @@ Repositório Oficial: [github.com/eloruiz/caixeiro-viajante-genetico](https://gi
    - [Cenário Bônus: Teste de Escala em Círculo](#cenário-bônus-alta-quantidade-de-pontos)
 5. [Métricas de Desempenho e Acompanhamento](#-métricas-de-desempenho-e-acompanhamento)
 6. [Arquitetura de Código Proposta](#-arquitetura-de-código-proposta)
-7. [Planejamento de Execução e Cronograma](#-planejamento-de-execução-e-cronograma)
-8. [Guia de Colaboração & GitHub Badges](#-guia-de-colaboração--github-badges)
+7. [Tecnologias Utilizadas](#️-tecnologias-utilizadas)
+8. [Como Executar o Projeto](#-como-executar-o-projeto)
+9. [Referências Bibliográficas](#-referências-bibliográficas)
 
 ---
 
@@ -223,28 +224,6 @@ source .venv/bin/activate  # Linux / macOS
 ### 3. Instalar dependências
 ```bash
 pip install -r requirements.txt
-```
-
----
-
-## 🏆 Guia de Colaboração & GitHub Badges
-
-Aproveitando o trabalho em equipe no GitHub, este repositório é uma ótima oportunidade para os integrantes desbloquearem conquistas (*badges*) oficiais do perfil do GitHub:
-
-| Conquista | Como desbloquear no projeto |
-| :--- | :--- |
-| **Pull Shark** 🦈 | Abrir uma Pull Request (PR) a partir de uma branch (ex: `feature/ordered-crossover`) e fazer o merge na `main`. |
-| **Pair Extraordinaire** 👯 | Fazer commits conjuntos em dupla/grupo utilizando a tag de trailer Git: `Co-authored-by: Nome <email>`. |
-| **Quickdraw** ⚡ | Abrir uma Issue ou PR e fechá-la/mesclá-la em menos de 5 minutos após a abertura. |
-| **YOLO** 🚀 | Fazer merge de uma Pull Request sem requerer code review prévio. |
-| **Galaxy Brain** 🧠 | Responder a uma dúvida na aba de *Discussions* do repositório que seja marcada como resposta aceita. |
-
-### Exemplo de Commit com Co-Autoria (*Pair Extraordinaire*):
-```bash
-git commit -m "docs: detalha selecao por torneio e crossover OX
-
-Co-authored-by: Eloise Ruiz <eloise.ruiz@exemplo.com>
-Co-authored-by: Lucas Leal <lucas.leal@exemplo.com>"
 ```
 
 ---

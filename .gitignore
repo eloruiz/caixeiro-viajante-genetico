@@ -47,3 +47,4 @@ venv.bak/
 # OS artifacts
 .DS_Store
 Thumbs.db
+/teste_problema

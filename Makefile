@@ -9,7 +9,7 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra
 
 # LISTA DE TESTES (ADICIONAR AQUI): escreva o nome do executável de cada teste novo
-TESTES = teste_problema teste_cruzamento
+TESTES = teste_problema teste_cruzamento build/teste_evolucao build/teste_requisitos
 
 # Regra principal: compila todos os testes da lista e roda um por um.
 # O "|| exit 1" faz o make parar assim que um teste falhar.
@@ -29,6 +29,14 @@ teste_cruzamento: testes/teste_cruzamento.cpp src/cruzamento.cpp include/cruzame
 	$(CXX) $(CXXFLAGS) testes/teste_cruzamento.cpp src/cruzamento.cpp -o teste_cruzamento
 
 # Apaga os executáveis (eles são gerados de novo a qualquer momento com make teste)
+build/teste_evolucao: testes/teste_evolucao.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp include/evolucao.h include/problema.h include/cruzamento.h
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) testes/teste_evolucao.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp -o $@
+
+build/teste_requisitos: testes/teste_requisitos.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp include/evolucao.h include/problema.h include/cruzamento.h
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) testes/teste_requisitos.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp -o $@
+
 limpar:
 	rm -f $(TESTES)
 

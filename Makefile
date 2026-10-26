@@ -37,8 +37,15 @@ build/teste_requisitos: testes/teste_requisitos.cpp src/evolucao.cpp src/problem
 	mkdir -p build
 	$(CXX) $(CXXFLAGS) testes/teste_requisitos.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp -o $@
 
-limpar:
-	rm -f $(TESTES)
+# Executável principal do algoritmo genético
+ag: build/ag
 
-# Diz ao make que "teste" e "limpar" são comandos, e não arquivos
-.PHONY: teste limpar
+build/ag: src/main.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp include/evolucao.h include/problema.h include/cruzamento.h
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) -O3 src/main.cpp src/evolucao.cpp src/problema.cpp src/cruzamento.cpp -o build/ag
+
+limpar:
+	rm -f $(TESTES) build/ag
+
+# Diz ao make que "teste", "limpar" e "ag" são comandos, e não arquivos
+.PHONY: teste limpar ag

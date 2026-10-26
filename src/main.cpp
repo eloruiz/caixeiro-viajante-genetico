@@ -1,4 +1,6 @@
 #include "../include/evolucao.h"
+#include <chrono>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -9,7 +11,7 @@ int main(int argc, char **argv)
 {
     try
     {
-        if (argc > 8)
+        if (argc > 9)
             throw std::invalid_argument("Argumentos em excesso.");
         std::string cenario = argc > 1 ? argv[1] : "circular";
         auto inteiro = [](const char *texto) {
@@ -33,12 +35,21 @@ int main(int argc, char **argv)
             if (argv[6][fim] != '\0') throw std::invalid_argument("Taxa invalida.");
         }
         if (argc > 7) p.limiteSemMelhora = inteiro(argv[7]);
+        std::string pastaSaida = argc > 8 ? argv[8] : ".";
         if (cenario != "circular" && cenario != "aleatorio")
             throw std::invalid_argument("Cenario deve ser circular ou aleatorio.");
-        auto pontos = cenario == "circular" ? gerarPontosCirculares(quantidade, 10) :
-                                             gerarPontosUniformes(quantidade, 100, p.semente);
+        auto pontos = cenario == "circular" ? gerarPontosCirculares(quantidade, 10.0) :
+                                             gerarPontosUniformes(quantidade, 100.0, p.semente);
+
+        auto inicio = std::chrono::high_resolution_clock::now();
         auto resultado = executarEvolucao(pontos, p);
-        std::ofstream historico("historico.csv"), coordenadas("pontos.csv");
+        auto fim = std::chrono::high_resolution_clock::now();
+        double tempoSegundos = std::chrono::duration<double>(fim - inicio).count();
+
+        std::string caminhoHistorico = (pastaSaida == "." ? "" : pastaSaida + "/") + "historico.csv";
+        std::string caminhoPontos = (pastaSaida == "." ? "" : pastaSaida + "/") + "pontos.csv";
+
+        std::ofstream historico(caminhoHistorico), coordenadas(caminhoPontos);
         historico.exceptions(std::ios::failbit | std::ios::badbit);
         coordenadas.exceptions(std::ios::failbit | std::ios::badbit);
         historico << std::setprecision(17) << "geracao,melhor_distancia,distancia_media,rota\n";
@@ -55,16 +66,24 @@ int main(int argc, char **argv)
         std::cout << std::setprecision(12)
                   << "Distancia inicial: " << resultado.historico.front().melhorDistancia
                   << "\nDistancia final: " << resultado.melhorDistancia
+                  << "\nTempo: " << std::fixed << std::setprecision(4) << tempoSegundos << " s"
                   << "\nGeracoes: " << resultado.historico.back().geracao
-                  << "\nParada: " << (resultado.motivoParada == MotivoParada::estagnacao ? "estagnacao" : "limite de geracoes")
-                  << "\nRota: ";
+                  << "\nParada: " << (resultado.motivoParada == MotivoParada::estagnacao ? "estagnacao" : "limite de geracoes");
+        if (cenario == "circular") {
+            const double pi = std::acos(-1.0);
+            double otimo = quantidade * 2.0 * 10.0 * std::sin(pi / quantidade);
+            double erro = (resultado.melhorDistancia - otimo) / otimo * 100.0;
+            std::cout << "\nOtimo teorico: " << std::setprecision(6) << otimo
+                      << "\nErro relativo: " << std::setprecision(4) << erro << "%";
+        }
+        std::cout << "\nRota: ";
         for (int cidade : resultado.melhorRota) std::cout << cidade << ' ';
-        std::cout << resultado.melhorRota.front() << "\nArquivos: historico.csv e pontos.csv\n";
+        std::cout << resultado.melhorRota.front() << "\nArquivos: " << caminhoHistorico << " e " << caminhoPontos << "\n";
     }
     catch (const std::exception &erro)
     {
         std::cerr << "Erro: " << erro.what()
-                  << "\nUso: ag [circular|aleatorio] [pontos] [semente] [populacao] [geracoes] [mutacao] [sem_melhora]\n";
+                  << "\nUso: ag [circular|aleatorio] [pontos] [semente] [populacao] [geracoes] [mutacao] [sem_melhora] [pasta_saida]\n";
         return 1;
     }
 }

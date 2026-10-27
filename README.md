@@ -203,7 +203,47 @@ Pop-Location
 
 Na API C++, `ResultadoEvolucao` fornece `melhorRota`, `melhorDistancia`, `motivoParada` e `historico`. Cada `RegistroGeracao` contém o número da geração, a melhor distância, a distância média e a melhor rota daquela geração.
 
-**As visualizações ainda estão pendentes:** o programa atual funciona pelo terminal e exporta dados. As partes 4 e 5 devem produzir os gráficos, os desenhos das rotas e a análise experimental dos respectivos cenários.
+**Visualizações da parte 4:** os experimentos com pontos aleatórios possuem gráficos de convergência, visualizações das rotas finais e arquivos CSV com os históricos das gerações e as coordenadas dos pontos. Os resultados e a análise experimental do cenário aleatório estão documentados nesta seção. A experimentação do cenário circular, correspondente à parte 5, permanece separada.
+
+### Geração das visualizações dos experimentos
+
+A geração dos gráficos e das imagens das rotas finais é realizada pelo script Python `experimentos/gerar_graficos.py`.
+
+**Dependências:**
+- Python 3
+- Matplotlib
+
+Para instalar a dependência, execute na raiz do repositório:
+
+```powershell
+python -m pip install matplotlib
+```
+
+Para gerar novamente as visualizações:
+
+```powershell
+python .\experimentos\gerar_graficos.py
+```
+
+O script processa os experimentos das sementes 42, 123 e 456, utilizando os arquivos CSV correspondentes. Os resultados são organizados em `experimentos/resultados/`, com uma pasta para cada semente, contendo o histórico, as coordenadas, o gráfico de convergência e a imagem da rota final.
+
+Os arquivos existentes podem ser regenerados executando o script novamente.
+
+### Análise dos experimentos com pontos aleatórios
+
+Foram realizados três experimentos com 12 cidades, utilizando as sementes 42, 123 e 456. Os resultados foram:
+
+| Semente | Distância inicial | Distância final | Redução |
+| ---: | ---: | ---: | ---: |
+| 42 | 519,3064 | 326,7457 | 37,1% |
+| 123 | 297,8075 | 229,8839 | 22,8% |
+| 456 | 466,0941 | 312,6760 | 33,1% |
+
+As três execuções apresentaram redução da distância da melhor rota encontrada. A semente 42 obteve a maior redução percentual, de aproximadamente 37,1%, enquanto a semente 123 terminou com a menor distância absoluta, de 229,8839. Essa execução, porém, também começou com uma distância inicial menor.
+
+Os gráficos de convergência permitem acompanhar a evolução da melhor solução ao longo das gerações. A tendência observada é de melhoria mais expressiva no início, seguida de períodos com avanços menores ou estabilização. Como o algoritmo utiliza componentes aleatórios, diferentes sementes podem produzir trajetórias evolutivas e resultados finais distintos.
+
+Os resultados mostram que o algoritmo genético melhorou as rotas nos três experimentos. Entretanto, a redução da distância não comprova que a solução encontrada seja o ótimo global. As conclusões se limitam às execuções realizadas e aos parâmetros utilizados.
 
 ## Testes e resultados
 

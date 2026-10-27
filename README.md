@@ -203,7 +203,59 @@ Pop-Location
 
 Na API C++, `ResultadoEvolucao` fornece `melhorRota`, `melhorDistancia`, `motivoParada` e `historico`. Cada `RegistroGeracao` contém o número da geração, a melhor distância, a distância média e a melhor rota daquela geração.
 
-**As visualizações ainda estão pendentes:** o programa atual funciona pelo terminal e exporta dados. As partes 4 e 5 devem produzir os gráficos, os desenhos das rotas e a análise experimental dos respectivos cenários.
+## Experimentos com o benchmark circular e bônus (parte 5)
+
+A experimentação da parte 5 avalia o algoritmo genético no cenário circular com raio 10, comparando as soluções encontradas com a solução analítica ótima do polígono regular convexo:
+$$D_{\text{ótimo}} = N \cdot 2R \sin\left(\frac{\pi}{N}\right)$$
+
+### Geração das visualizações e execução automatizada
+
+A execução do benchmark circular e do teste de escala é realizada pelo script Python `experimentos/executar_parte5.py`, dependendo apenas de Python 3 e `matplotlib` (sem necessidade de `pandas`):
+
+```bash
+# Execução padrão (gera gráficos, rotas e HTML com amostragem inteligente)
+python3 experimentos/executar_parte5.py
+
+# Opcional: gera também a versão HTML completa com todas as 3.000 gerações no bônus
+python3 experimentos/executar_parte5.py --completo
+```
+
+### Análise dos experimentos circulares (N=12)
+
+Foram executadas as sementes 42, 123 e 456 com 12 cidades em circunferência de raio 10 (parâmetros: população 100, mutação 0,10, parada após 200 gerações sem melhora).
+
+| Semente | Distância inicial | Distância final | Ótimo teórico | Erro relativo | Gerações | Tempo (s) | Parada |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 42 | 127,6268 | 62,1166 | 62,1166 | 0,0000% | 235 | ~0,01 s | Estagnação |
+| 123 | 129,4887 | 62,1166 | 62,1166 | 0,0000% | 212 | ~0,01 s | Estagnação |
+| 456 | 122,6670 | 62,1166 | 62,1166 | 0,0000% | 214 | ~0,01 s | Estagnação |
+
+Todas as sementes atingiram o ótimo analítico global com erro relativo de **0,0000%**, confirmando que o operador de cruzamento OX e o elitismo encontram o circuito perimetral convexo ideal em poucas épocas.
+
+Cada pasta de semente em `experimentos/resultados/circular/` contém:
+- `historico.csv` e `pontos.csv`: Dados numéricos da evolução e coordenadas dos pontos.
+- `grafico_convergencia.png`: Curva da melhor distância e média populacional com a linha de referência do ótimo teórico analítico.
+- `rotas_evolucao.png`: Painel comparativo mostrando o circuito inicial desordenado e o polígono final regular.
+- `rota_final.png`: Imagem isolada da melhor rota final encontrada.
+- `evolucao_rotas.html`: Visualizador interativo offline com reprodução automática, controle de velocidade (0.5x a 5x), alternador de rótulos das cidades e exibição do ótimo teórico e erro relativo em tempo real.
+
+### Bônus: Teste de estresse de escala (N=200 cidades)
+
+Para avaliar o comportamento do algoritmo sob alta complexidade combinatória, executou-se o modelo circular com 200 cidades, população 300, até 3.000 gerações contínuas (`limiteSemMelhora = 0`) e semente 42.
+
+| Métrica | Valor observado |
+| :--- | :--- |
+| Distância inicial (Geração 0) | 2.307,7720 |
+| Distância final (Geração 3000) | 189,9840 |
+| Ótimo teórico ($D_{\text{ótimo}}$) | 62,8293 |
+| Redução da distância | **91,8%** |
+| Tempo de processamento | **~1,07 s** (para 3.000 gerações) |
+
+Os resultados do bônus estão em `experimentos/resultados/bonus/`:
+- `grafico_convergencia_bonus.png`: Acompanhamento da curva de convergência ao longo de 3.000 épocas.
+- `painel_rotas_intermediarias.png`: Painel sequencial com 5 marcos temporais (0%, 10%, 30%, 60% e 100%), evidenciando visualmente o processo de desatamento progressivo dos cruzamentos de arestas.
+- `rota_final.png`: Traçado da melhor rota obtida na geração 3.000.
+- `evolucao_rotas.html`: Visualizador interativo com amostragem inteligente (892 frames selecionados com base em melhorias estritas e passos regulares) para reprodução suave no navegador, com botão instrucional para abertura da versão completa caso desejado.
 
 ## Testes e resultados
 

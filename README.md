@@ -203,7 +203,7 @@ Pop-Location
 
 Na API C++, `ResultadoEvolucao` fornece `melhorRota`, `melhorDistancia`, `motivoParada` e `historico`. Cada `RegistroGeracao` contém o número da geração, a melhor distância, a distância média e a melhor rota daquela geração.
 
-**Visualizações da parte 4:** os experimentos com pontos aleatórios possuem gráficos de convergência, visualizações das rotas finais e arquivos CSV com os históricos das gerações e as coordenadas dos pontos. Os resultados e a análise experimental do cenário aleatório estão documentados nesta seção. A experimentação do cenário circular, correspondente à parte 5, permanece separada.
+**Visualizações da parte 4:** cada semente possui gráfico de convergência, rota final e `evolucao_rotas.html`, uma página offline com reprodução e seleção de qualquer geração, incluindo a população inicial. Abra o HTML no navegador para acompanhar a rota, sua distância e a média da população época a época. A experimentação circular corresponde à parte 5.
 
 ### Geração das visualizações dos experimentos
 
@@ -229,9 +229,21 @@ O script processa os experimentos das sementes 42, 123 e 456, utilizando os arqu
 
 Os arquivos existentes podem ser regenerados executando o script novamente.
 
+O script utiliza a biblioteca padrão para ler os CSVs; `pandas` não é necessário. Para repetir os experimentos e a comparação de parâmetros, compile `build/ag.exe` e execute, na raiz:
+
+```powershell
+python .\experimentos\executar_comparacao.py
+```
+
+Esse comando gera 15 execuções em `experimentos/resultados/comparacao/`, com CSVs, comando e saída de cada execução em `execucao.txt` e uma tabela `resumo.csv`. Também verifica todas as rotas, o fechamento do circuito, as distâncias, a sequência das gerações, o elitismo e a reprodução dos resultados originais. A comparação não substitui os CSVs das três sementes originais.
+
 ### Análise dos experimentos com pontos aleatórios
 
 Foram realizados três experimentos com 12 cidades, utilizando as sementes 42, 123 e 456. Os resultados foram:
+
+Configuração: cenário aleatório uniforme em [0, 100] nos dois eixos; população 100; torneio 3; elite 1; cruzamento OX com taxa 0,90; mutação por troca com probabilidade 0,10 por filho; máximo de 1000 gerações e parada após 200 gerações sem melhora. A mesma semente controla os pontos e a evolução. As sementes mudam a instância de cidades e a busca, portanto suas distâncias absolutas não medem isoladamente a qualidade do algoritmo.
+
+As sementes 42, 123 e 456 encerraram por estagnação nas gerações 223, 216 e 219, respectivamente. A última melhora ocorreu nas gerações 23, 16 e 19.
 
 | Semente | Distância inicial | Distância final | Redução |
 | ---: | ---: | ---: | ---: |
@@ -244,6 +256,24 @@ As três execuções apresentaram redução da distância da melhor rota encontr
 Os gráficos de convergência permitem acompanhar a evolução da melhor solução ao longo das gerações. A tendência observada é de melhoria mais expressiva no início, seguida de períodos com avanços menores ou estabilização. Como o algoritmo utiliza componentes aleatórios, diferentes sementes podem produzir trajetórias evolutivas e resultados finais distintos.
 
 Os resultados mostram que o algoritmo genético melhorou as rotas nos três experimentos. Entretanto, a redução da distância não comprova que a solução encontrada seja o ótimo global. As conclusões se limitam às execuções realizadas e aos parâmetros utilizados.
+
+### Comparação de população e mutação — parte 4
+
+Em 27/10/2026 foram executadas cinco configurações com as mesmas três sementes (15 execuções), mantendo os demais parâmetros acima. Primeiro variou-se a população com mutação 0,10; depois a mutação com população 100. Dentro de cada semente, as coordenadas são as mesmas para todas as configurações.
+
+| População | Mutação por filho | Distância final média | Gerações médias até parada |
+| ---: | ---: | ---: | ---: |
+| 50 | 0,10 | 289,7686 | 229,3 |
+| 100 | 0,10 | 289,7686 | 219,3 |
+| 200 | 0,10 | 289,7686 | 225,7 |
+| 100 | 0,05 | 289,7686 | 214,3 |
+| 100 | 0,20 | 289,7686 | 219,0 |
+
+Todas as configurações atingiram a mesma distância final em cada uma das três instâncias. Nesse recorte, aumentar a população para 200 ou a mutação para 0,20 não trouxe ganho de qualidade. A configuração 100/0,05 parou em menos gerações em média, mas isso não prova vantagem geral. Mantém-se 100/0,10 como referência para os resultados apresentados, sem alegar superioridade sobre as alternativas. Gerações até parada incluem a janela de 200 gerações sem melhora e não equivalem a tempo de execução; populações diferentes também têm custos distintos por geração. Três instâncias pequenas não permitem generalizar os resultados nem afirmar ótimo global.
+
+### Validação da parte 4
+
+Em 27/10/2026, a suíte C++ e a integração PowerShell passaram novamente, incluindo os dois cenários e a rejeição de argumentos inválidos. A comparação verificou os históricos completos das 15 novas execuções e das três originais: permutações válidas, distâncias recalculadas com retorno à origem, melhor distância sem piora e reprodução das três soluções de referência.
 
 ## Testes e resultados
 

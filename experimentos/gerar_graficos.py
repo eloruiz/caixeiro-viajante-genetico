@@ -1,7 +1,8 @@
 
 from pathlib import Path
 
-import pandas as pd
+import csv
+import json
 import matplotlib.pyplot as plt
 
 PASTA_PROJETO = Path(__file__).resolve().parent.parent
@@ -17,10 +18,14 @@ for semente in sementes:
         print(f"Arquivos ausentes na pasta: {pasta}")
         continue
 
-    historico = pd.read_csv(arquivo_historico)
-    pontos = pd.read_csv(arquivo_pontos)
+    with arquivo_historico.open(encoding="utf-8", newline="") as entrada:
+        registros = list(csv.DictReader(entrada))
+    with arquivo_pontos.open(encoding="utf-8", newline="") as entrada:
+        pontos = list(csv.DictReader(entrada))
+    historico = {chave: [float(r[chave]) for r in registros]
+                 for chave in ("geracao", "melhor_distancia", "distancia_media")}
 
-    if historico.empty or pontos.empty:
+    if not registros or not pontos:
         print(f"Dados vazios na pasta: {pasta}")
         continue
 
@@ -48,7 +53,8 @@ for semente in sementes:
     plt.close()
 
     # Recupera a melhor rota registrada na última geração
-    registro_final = historico.iloc[-1]
+    registro_final = dict(registros[-1])
+    registro_final["melhor_distancia"] = float(registro_final["melhor_distancia"])
     rota = [
         int(cidade)
         for cidade in str(registro_final["rota"]).split()
@@ -57,17 +63,16 @@ for semente in sementes:
     # Fecha o percurso retornando à primeira cidade
     rota_fechada = rota + [rota[0]]
 
-    coordenadas = pontos.set_index("cidade")
-    x = [coordenadas.loc[cidade, "x"] for cidade in rota_fechada]
-    y = [coordenadas.loc[cidade, "y"] for cidade in rota_fechada]
+    coordenadas = {int(p["cidade"]): (float(p["x"]), float(p["y"])) for p in pontos}
+    x = [coordenadas[cidade][0] for cidade in rota_fechada]
+    y = [coordenadas[cidade][1] for cidade in rota_fechada]
 
     # Desenha a rota final
     plt.figure(figsize=(9, 7))
     plt.plot(x, y, "-o", linewidth=1.8, markersize=6)
 
     for cidade in rota:
-        cx = coordenadas.loc[cidade, "x"]
-        cy = coordenadas.loc[cidade, "y"]
+        cx, cy = coordenadas[cidade]
         plt.annotate(
             str(cidade),
             (cx, cy),
@@ -86,6 +91,39 @@ for semente in sementes:
     plt.tight_layout()
     plt.savefig(pasta / "rota_final.png", dpi=300)
     plt.close()
+
+    # Todos os registros, inclusive geracoes sem melhora, ficam navegaveis offline.
+    dados = {"pontos": coordenadas, "historico": registros}
+    pagina = '''<!doctype html><html lang="pt-BR"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evolução das rotas</title><style>
+body{font:18px system-ui;max-width:850px;margin:30px auto;padding:16px}
+svg{width:100%;max-height:65vh;background:#f5f7fa}input{width:100%}
+</style><h1>Evolução da melhor rota — semente SEMENTE</h1>
+<p>Selecione qualquer geração ou reproduza a evolução. O circuito retorna à primeira cidade.</p>
+<button id="play">Reproduzir</button><label for="geracao">Geração</label>
+<input id="geracao" type="range" min="0" value="0" step="1">
+<p id="estado" aria-live="polite"></p><svg viewBox="0 0 620 620" role="img" aria-label="Rota fechada entre as cidades"></svg>
+<script>const dados=DADOS;const slider=document.querySelector('input');
+const svg=document.querySelector('svg');let timer=null;
+slider.max=dados.historico.length-1;
+const pontos=Object.values(dados.pontos), xs=pontos.map(p=>p[0]),ys=pontos.map(p=>p[1]);
+const xmin=Math.min(...xs),ymin=Math.min(...ys);
+const escala=540/Math.max(Math.max(...xs)-xmin,Math.max(...ys)-ymin,1);
+function xy(id){const p=dados.pontos[id];return [40+(p[0]-xmin)*escala,580-(p[1]-ymin)*escala]}
+function desenhar(){const r=dados.historico[Number(slider.value)];
+const rota=r.rota.trim().split(/\\s+/);const fechada=[...rota,rota[0]];
+svg.innerHTML='<polyline fill="none" stroke="#2563eb" stroke-width="2" points="'+fechada.map(id=>xy(id).join(',')).join(' ')+'"/>'+
+rota.map(id=>{const [x,y]=xy(id);return `<circle cx="${x}" cy="${y}" r="5" fill="#16233a"/><text x="${x+7}" y="${y-7}" font-size="14">${id}</text>`}).join('');
+document.querySelector('#estado').textContent=`Geração ${r.geracao} | Melhor distância: ${Number(r.melhor_distancia).toFixed(4)} | Média: ${Number(r.distancia_media).toFixed(4)}`;}
+slider.oninput=desenhar;document.querySelector('#play').onclick=()=>{
+if(timer){clearInterval(timer);timer=null;document.querySelector('#play').textContent='Reproduzir';return}
+if(Number(slider.value)===Number(slider.max))slider.value=0;
+document.querySelector('#play').textContent='Pausar';timer=setInterval(()=>{
+slider.value=Number(slider.value)+1;desenhar();if(Number(slider.value)>=Number(slider.max)){clearInterval(timer);timer=null;document.querySelector('#play').textContent='Reproduzir'}},120)};desenhar();
+</script></html>'''
+    (pasta / "evolucao_rotas.html").write_text(
+        pagina.replace("SEMENTE", str(semente)).replace("DADOS", json.dumps(dados)), encoding="utf-8")
 
     print(f"\nSemente: {semente}")
     print(f"Distância final: {registro_final['melhor_distancia']:.4f}")

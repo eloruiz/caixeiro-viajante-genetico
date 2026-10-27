@@ -1,0 +1,7 @@
+Comando: aleatorio 12 42 100 1000 0.2 200
+Distancia inicial: 519.306423501
+Distancia final: 326.745749032
+Geracoes: 219
+Parada: estagnacao
+Rota: 2 3 9 5 4 1 7 11 6 0 8 10 2
+Arquivos: historico.csv e pontos.csv

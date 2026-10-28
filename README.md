@@ -7,6 +7,9 @@
 ---
 
 ## 👥 Integrantes do Grupo
+
+O grupo de cinco integrantes é uma exceção autorizada pelo professor ao limite do enunciado.
+
 * **Pedro Henrique Coan Zin**
 * **Lucas Leal Ibrahim**
 * **Renato Henrique Ykutake Florencio**
@@ -15,7 +18,7 @@
 
 Repositório Oficial: [github.com/eloruiz/caixeiro-viajante-genetico](https://github.com/eloruiz/caixeiro-viajante-genetico)
 
-O mecanismo evolutivo da parte 3 está implementado em **C++17**. As instruções de execução, os parâmetros e os testes estão neste README.
+O algoritmo está implementado em **C++17**. Python executa os experimentos e gera gráficos e relatórios; HTML/JavaScript apenas reproduz os resultados já calculados. As instruções de execução, os parâmetros e os testes estão neste README.
 
 ---
 
@@ -28,7 +31,9 @@ O mecanismo evolutivo da parte 3 está implementado em **C++17**. As instruçõe
 6. [Implementação da parte 3](#implementação-da-parte-3)
 7. [Compilar e executar](#compilar-e-executar)
 8. [Dados para a parte 4](#dados-para-a-parte-4)
-9. [Testes e resultados](#testes-e-resultados)
+9. [Experimentos circulares e bônus](#experimentos-com-o-benchmark-circular-e-bônus-parte-5)
+10. [Conferência do enunciado](#conferência-do-enunciado)
+11. [Testes e resultados](#testes-e-resultados)
 
 ---
 
@@ -54,7 +59,7 @@ Dado um conjunto arbitrário de $N$ pontos no plano cartesiano ($N \ge 8$), onde
 
 ## 🧪 Cenários de Teste
 
-O algoritmo será avaliado sob duas configurações topológicas:
+O algoritmo foi avaliado sob duas configurações topológicas:
 
 ### 1. Pontos Uniformemente Distribuídos
 * Pontos dispersos aleatoriamente em um plano bidimensional.
@@ -137,7 +142,37 @@ O algoritmo e seus testes funcionais são escritos em C++17. Os scripts PowerShe
 | `limiteSemMelhora` | 200 | Encerra buscas estagnadas; zero desativa esse critério. |
 | `semente` | 42 | Permite repetir experimentos na mesma implementação da biblioteca C++. |
 
-Esses valores são propostas iniciais. A escolha final deve ser apoiada por comparações de configurações e sementes nas partes 4 e 5. Pela API C++, todos os campos podem ser alterados antes de chamar `executarEvolucao(pontos, parametros)`.
+### Justificativa da população, parada e mutação
+
+A população 100 mantém várias rotas candidatas sem elevar tanto o custo de avaliação quanto uma população 200. Na comparação registrada em `experimentos/resultados/comparacao/resumo.csv`, populações 50, 100 e 200 atingiram a mesma distância final em cada uma das três sementes. Mantemos 100 como referência intermediária; os resultados não demonstram superioridade geral nem medem tempo de execução.
+
+O teto de 1.000 gerações limita o custo. A parada após 200 gerações consecutivas sem melhora estrita evita continuar indefinidamente quando a melhor solução estabiliza. O elitismo preserva a melhor rota. Estagnação não comprova ótimo local nem global. No bônus simplificado de 100 cidades, usamos uma janela de 500 gerações e teto de 20.000, registrando o tempo até confirmar essa condição.
+
+A mutação troca duas cidades distintas, preservando uma permutação válida e introduzindo variação que pode explorar rotas ausentes na população. Com probabilidade 0,10 por filho, a maioria dos filhos mantém a ordem produzida pelo cruzamento; entre 99 filhos não elitistas, esperam-se cerca de 9,9 mutações por geração, sem quantidade fixa. Foram comparadas taxas 0,05, 0,10 e 0,20 com população 100. Todas chegaram às mesmas distâncias finais nas três instâncias. As médias até parada foram 214,3, 219,3 e 219,0 gerações, respectivamente. Assim, 0,10 é uma referência conservada entre experimentos, não uma taxa comprovadamente ótima. Três instâncias de 12 cidades não sustentam generalizações para problemas maiores.
+
+### Representação do indivíduo e escolha do cruzamento
+
+Cada indivíduo é uma permutação dos índices das cidades; cada posição contém o índice da próxima cidade a visitar. O fechamento é implícito: a última cidade liga-se à primeira. Isso representa diretamente a ordem das visitas e permite verificar se cada cidade aparece exatamente uma vez.
+
+Usamos Order Crossover (OX), pois um cruzamento comum de vetores pode repetir cidades e omitir outras. O OX copia um segmento do primeiro pai e preenche as demais posições, circularmente, na ordem do segundo pai, ignorando cidades já usadas. Assim, preserva parte da ordem relativa e produz uma permutação válida. Não garante preservar todas as boas arestas nem encontrar o ótimo.
+
+Exemplo com oito cidades, cortes nas posições 2 a 4 (índices iniciados em zero):
+
+```text
+Pai 1: 0 1 [2 3 4] 5 6 7
+Pai 2: 4 6 0 2 7 1 5 3
+Filho: 0 7 [2 3 4] 1 5 6
+```
+
+Após copiar `2 3 4`, percorre-se o pai 2 a partir da posição 5 e preenchem-se as posições livres a partir da posição 5 do filho. Seleção por torneio de tamanho 3 favorece rotas menores; cruzamento 0,90 recombina a maioria dos filhos e elite 1 protege a melhor solução.
+
+### Aptidão e sementes
+
+A aptidão é `f = 1 / (1 + D)`, com `D` igual à distância euclidiana total, incluindo o retorno à origem. Ela é positiva e diminui quando a distância aumenta; o termo 1 evita divisão por zero. Por exemplo, distâncias 9 e 19 produzem aptidões 0,10 e 0,05. O torneio compara diretamente as distâncias, o que equivale a escolher a maior aptidão.
+
+A semente **não precisa ser 42**. Ela inicializa o gerador pseudoaleatório e deve ser registrada para reproduzir os resultados no mesmo ambiente e implementação da biblioteca C++. Foram usadas 42, 123 e 456 para observar mais de uma execução. No aleatório, a semente altera tanto as coordenadas quanto a busca; no circular, os pontos permanecem iguais e a busca muda. Portanto, comparar distâncias absolutas entre sementes aleatórias não isola a qualidade do algoritmo. Não se deve escolher apenas a semente com o resultado mais favorável.
+
+Pela API C++, todos os parâmetros podem ser alterados antes de chamar `executarEvolucao(pontos, parametros)`.
 
 São necessários ao menos 8 pontos finitos, população de pelo menos 2, torneio entre 1 e o tamanho da população e elite entre 1 e população menos 1. As taxas devem estar entre 0 e 1, e os limites de gerações não podem ser negativos. Zero gerações retorna somente a população inicial.
 
@@ -166,7 +201,7 @@ Para executar o cenário circular:
 ### Argumentos do programa
 
 ```text
-ag [circular|aleatorio] [pontos] [semente] [populacao] [geracoes] [mutacao] [sem_melhora]
+ag [circular|aleatorio] [pontos] [semente] [populacao] [geracoes] [mutacao] [sem_melhora] [pasta_saida]
 ```
 
 Todos os argumentos são opcionais, nessa ordem. Sem argumentos, o programa usa cenário circular, 12 pontos e os parâmetros padrão. A CLI aceita sementes inteiras de 0 a 2147483647 e taxas com ponto decimal, como `0.10`.
@@ -183,7 +218,7 @@ Na CLI, o círculo tem raio 10 e o cenário aleatório usa coordenadas entre 0 e
 
 ## Dados para a parte 4
 
-Cada execução grava dois arquivos **no diretório em que o programa foi executado**:
+Cada execução grava dois arquivos **no diretório em que o programa foi executado**, ou na pasta de saída opcional (que deve existir):
 
 | Arquivo | Colunas | Uso |
 | --- | --- | --- |
@@ -203,6 +238,33 @@ Pop-Location
 
 Na API C++, `ResultadoEvolucao` fornece `melhorRota`, `melhorDistancia`, `motivoParada` e `historico`. Cada `RegistroGeracao` contém o número da geração, a melhor distância, a distância média e a melhor rota daquela geração.
 
+### Resultados do cenário aleatório e visualização por época
+
+Os experimentos usam 12 cidades, população 100, torneio 3, elite 1, OX 0,90,
+mutação 0,10 por filho, teto de 1.000 gerações e parada após 200 sem melhora.
+
+| Semente | Distância inicial | Distância final | Redução | Geração de parada |
+| ---: | ---: | ---: | ---: | ---: |
+| 42 | 519,3064 | 326,7457 | 37,08% | 223 |
+| 123 | 297,8075 | 229,8839 | 22,81% | 216 |
+| 456 | 466,0941 | 312,6760 | 32,92% | 219 |
+
+Cada semente altera os pontos e a busca, portanto as distâncias absolutas entre sementes
+não isolam a qualidade do algoritmo. A redução demonstra melhora, sem comprovar ótimo global.
+
+Para mostrar a solução e o desempenho **a cada época**, abra um dos visualizadores:
+
+- [Aleatório — semente 42](experimentos/resultados/semente_42/evolucao_rotas.html)
+- [Aleatório — semente 123](experimentos/resultados/semente_123/evolucao_rotas.html)
+- [Aleatório — semente 456](experimentos/resultados/semente_456/evolucao_rotas.html)
+
+Use Reproduzir ou a barra de geração. A página mostra a rota fechada, a melhor distância
+e a média da população, desde a geração 0 até a parada. Não precisa de servidor:
+os HTMLs podem ser abertos diretamente no navegador. Para regenerar os gráficos e HTMLs
+a partir dos CSVs existentes, instale matplotlib e execute `python experimentos/gerar_graficos.py`.
+Para repetir a comparação de populações e mutações, compile o C++ e execute
+`python experimentos/executar_comparacao.py`.
+
 ## Experimentos com o benchmark circular e bônus (parte 5)
 
 A experimentação da parte 5 avalia o algoritmo genético no cenário circular com raio 10, comparando as soluções encontradas com a solução analítica ótima do polígono regular convexo:
@@ -210,15 +272,16 @@ $$D_{\text{ótimo}} = N \cdot 2R \sin\left(\frac{\pi}{N}\right)$$
 
 ### Geração das visualizações e execução automatizada
 
-A execução do benchmark circular e do teste de escala é realizada pelo script Python `experimentos/executar_parte5.py`, dependendo apenas de Python 3 e `matplotlib` (sem necessidade de `pandas`):
+Os resultados circulares de 12 cidades estão disponíveis nos arquivos abaixo:
 
-```bash
-# Execução padrão (gera gráficos, rotas e HTML com amostragem inteligente)
-python3 experimentos/executar_parte5.py
+- [Circular — semente 42](experimentos/resultados/circular/semente_42/evolucao_rotas.html)
+- [Circular — semente 123](experimentos/resultados/circular/semente_123/evolucao_rotas.html)
+- [Circular — semente 456](experimentos/resultados/circular/semente_456/evolucao_rotas.html)
 
-# Opcional: gera também a versão HTML completa com todas as 3.000 gerações no bônus
-python3 experimentos/executar_parte5.py --completo
-```
+Cada HTML contém todas as épocas, com rota, melhor distância, média, ótimo teórico e erro.
+Para o **bônus atual de 100 cidades**, use somente `python experimentos/bonus_simples.py`.
+O script anterior `executar_parte5.py` mantém a reprodução dos experimentos históricos,
+incluindo o bônus antigo de 200 cidades; não é necessário executá-lo para a apresentação simplificada.
 
 ### Análise dos experimentos circulares (N=12)
 
@@ -230,32 +293,93 @@ Foram executadas as sementes 42, 123 e 456 com 12 cidades em circunferência de 
 | 123 | 129,4887 | 62,1166 | 62,1166 | 0,0000% | 212 | ~0,01 s | Estagnação |
 | 456 | 122,6670 | 62,1166 | 62,1166 | 0,0000% | 214 | ~0,01 s | Estagnação |
 
-Todas as sementes atingiram o ótimo analítico global com erro relativo de **0,0000%**, confirmando que o operador de cruzamento OX e o elitismo encontram o circuito perimetral convexo ideal em poucas épocas.
+Todas as sementes atingiram o ótimo analítico global com erro relativo de **0,0000%**, mostrando que estas execuções encontraram o circuito perimetral. Isso não garante o mesmo resultado para qualquer tamanho ou semente.
 
 Cada pasta de semente em `experimentos/resultados/circular/` contém:
+
 - `historico.csv` e `pontos.csv`: Dados numéricos da evolução e coordenadas dos pontos.
 - `grafico_convergencia.png`: Curva da melhor distância e média populacional com a linha de referência do ótimo teórico analítico.
 - `rotas_evolucao.png`: Painel comparativo mostrando o circuito inicial desordenado e o polígono final regular.
 - `rota_final.png`: Imagem isolada da melhor rota final encontrada.
 - `evolucao_rotas.html`: Visualizador interativo offline com reprodução automática, controle de velocidade (0.5x a 5x), alternador de rótulos das cidades e exibição do ótimo teórico e erro relativo em tempo real.
 
-### Bônus: Teste de estresse de escala (N=200 cidades)
+### Bônus simples: 100 cidades
 
-Para avaliar o comportamento do algoritmo sob alta complexidade combinatória, executou-se o modelo circular com 200 cidades, população 300, até 3.000 gerações contínuas (`limiteSemMelhora = 0`) e semente 42.
+A apresentação do bônus usa **100 cidades no círculo, semente 52 e população 100**.
+O algoritmo permanece em C++; um único script Python compila, executa, confere os CSVs
+e produz uma imagem com o gráfico e as rotas inicial, intermediária e final.
 
-| Métrica | Valor observado |
-| :--- | :--- |
-| Distância inicial (Geração 0) | 2.307,7720 |
-| Distância final (Geração 3000) | 189,9840 |
-| Ótimo teórico ($D_{\text{ótimo}}$) | 62,8293 |
-| Redução da distância | **91,8%** |
-| Tempo de processamento | **~1,07 s** (para 3.000 gerações) |
+Na raiz do projeto, com g++ e Python instalados:
 
-Os resultados do bônus estão em `experimentos/resultados/bonus/`:
-- `grafico_convergencia_bonus.png`: Acompanhamento da curva de convergência ao longo de 3.000 épocas.
-- `painel_rotas_intermediarias.png`: Painel sequencial com 5 marcos temporais (0%, 10%, 30%, 60% e 100%), evidenciando visualmente o processo de desatamento progressivo dos cruzamentos de arestas.
-- `rota_final.png`: Traçado da melhor rota obtida na geração 3.000.
-- `evolucao_rotas.html`: Visualizador interativo com amostragem inteligente (892 frames selecionados com base em melhorias estritas e passos regulares) para reprodução suave no navegador, com botão instrucional para abertura da versão completa caso desejado.
+```powershell
+python -m pip install matplotlib
+python experimentos/bonus_simples.py
+```
+
+O script usa mutação 0,10 por filho, cruzamento OX 0,90, torneio 3 e elite 1.
+A parada ocorre após 500 gerações sem melhora, com teto de segurança de 20.000.
+O tempo é medido pelo C++ até a parada, excluindo compilação, exportação e gráficos.
+Estagnação não garante ótimo global.
+
+Os resultados e a explicação para a equipe estão em
+[`bonus_100/LEIA-ME.md`](experimentos/resultados/bonus_100/LEIA-ME.md).
+A imagem para apresentar é [`bonus_100/bonus.png`](experimentos/resultados/bonus_100/bonus.png).
+Os parâmetros estão no início de `experimentos/bonus_simples.py`.
+
+| Medida | Resultado registrado |
+| --- | ---: |
+| Cidades / semente / população | 100 / 52 / 100 |
+| Distância inicial → final | 1.150,7070 → 184,0140 |
+| Redução | 84,01% |
+| Última melhora / parada | 1.691 / 2.191 |
+| Tempo até confirmar estagnação | 0,1766 s |
+| Ótimo analítico / erro final | 62,8215 / 192,92% |
+
+![Bônus: gráfico e rotas intermediárias](experimentos/resultados/bonus_100/bonus.png)
+
+O tempo depende do computador e da compilação (`-O2` nesta execução).
+100 cidades é a escolha de escala deste trabalho; o enunciado não fixa mínimo para
+“quantidade alta”. O teste mostra estabilização da melhor distância, não alcance do ótimo.
+A nota máxima permanece 10; conforme o enunciado, o bônus pode compensar falhas nos outros critérios.
+As execuções anteriores de 200 cidades ficam como histórico; não são necessárias para apresentar este bônus.
+
+### Origem dos resultados circulares
+
+Os artefatos circulares versionados e a tabela da parte 5 registram 235, 212 e 214 gerações. A execução local com GCC/MSYS2 no Windows, semente 42 e mesmos parâmetros, encerrou em 213 gerações e atingiu a mesma distância ótima. A reprodução de sequências de distribuições e embaralhamentos da biblioteca padrão C++ depende da implementação; não se deve misturar o histórico de um ambiente com o número de gerações de outro. Os exemplos abaixo identificam a execução local; a tabela da parte 5 descreve os CSVs versionados.
+
+## Visualização interativa
+
+As animações compartilham o mesmo painel: métricas da geração, rota e gráfico lado a lado,
+reprodução/pausa, reinício, resultado final, velocidade e seleção de qualquer geração.
+O layout se adapta a telas menores e não depende de internet ou bibliotecas JavaScript externas.
+O gráfico acompanha somente os dados até a geração selecionada; a referência do ótimo aparece apenas no círculo.
+
+Para aplicar novamente o visual aos HTMLs existentes, sem executar o algoritmo nem alterar os CSVs:
+
+```powershell
+python experimentos/atualizar_visual.py
+```
+
+O modelo fica em `experimentos/visualizador.html` e o gerador em `experimentos/visualizacao.py`.
+Os scripts de gráficos e o bônus usam esse mesmo modelo ao gerar novas páginas.
+O bônus simples também gera `experimentos/resultados/bonus_100/evolucao_rotas.html` para reprodução opcional.
+
+## Conferência do enunciado
+
+| Exigência da atividade | Onde está atendida |
+| --- | --- |
+| Algoritmo genético parametrizado | `include/evolucao.h`, `src/evolucao.cpp` e tabela de parâmetros |
+| Pontos 2D, distância euclidiana e circuito fechado | `src/problema.cpp` e testes de recálculo da rota |
+| Quantidade arbitrária, mínimo de 8 pontos | Argumento `pontos` e validações nos geradores e na evolução |
+| Cenários uniforme e circular | Geradores C++ e experimentos dos dois cenários |
+| Explicar população e parada (1 ponto) | Seção de justificativas e comparação registrada em `comparacao/resumo.csv` |
+| Explicar mutação (1 ponto) | Probabilidade por filho, preservação da permutação e comparação 0,05/0,10/0,20 |
+| Explicar representação e cruzamento (2 pontos) | Permutação e exemplo completo do OX |
+| Explicar aptidão (1 ponto) | Fórmula `1 / (1 + D)` e exemplo numérico |
+| Solução e desempenho por época no aleatório (2,5 pontos) | CSVs completos e três HTMLs com rota, melhor distância e média |
+| Solução e desempenho por época no circular (2,5 pontos) | CSVs completos e três HTMLs com benchmark analítico |
+| Bônus: escala, tempo e rotas intermediárias (até 1 ponto) | `bonus_100/LEIA-ME.md`, `bonus.png`, histórico e saída do C++ |
+| Grupo de até 4 pessoas | Exceção para cinco integrantes autorizada pelo professor, informada pela equipe |
 
 ## Testes e resultados
 
@@ -276,7 +400,7 @@ O script usa `-Wall -Wextra -Wpedantic -Werror` e interrompe em caso de falha. O
 | `teste_requisitos.cpp` | 48 combinações de cenário/tamanho/parâmetros/semente, cálculo independente do circuito, referência exata para 8 cidades, aptidão, 1000 cruzamentos adicionais e escala de 500 cidades. |
 | `teste_integracao.ps1` | Execução dos dois cenários pela CLI, recálculo das distâncias nos CSVs, reprodução do histórico e rejeição de 11 argumentos inválidos. |
 
-A suíte completa passou na validação de **23/10/2026**, usando GCC do MSYS2 e PowerShell. Também foi verificada a rejeição de 12 entradas inválidas na evolução e de 14 nos geradores de pontos.
+A suíte completa passou novamente na validação de **28/10/2026**, usando GCC do MSYS2 e PowerShell. Também foi verificada a rejeição de 12 entradas inválidas na evolução e de 14 nos geradores de pontos.
 
 Em ambientes com make e shell compatível, `make teste` inclui os quatro conjuntos C++; os testes de integração PowerShell são executados pelo script acima. Neste ambiente, `make.exe` abortou antes da compilação com erro de acesso do MSYS2 (`NtCreateDirectoryObject`, `0xC0000022`); a validação efetiva foi feita pelo PowerShell.
 
@@ -291,4 +415,4 @@ Execuções com 12 cidades, semente 42 e demais parâmetros padrão:
 
 O círculo atingiu o ótimo conhecido na geração 13 e encerrou após 200 gerações sem melhora. O resultado aleatório demonstra redução da distância, sem comprovar ótimo global.
 
-O teste de escala com 500 cidades circulares, população 100 e 50 gerações levou aproximadamente 0,32 s no ambiente usado. A distância caiu de aproximadamente 6064,97 para 4548,47, ainda muito acima do ótimo de 62,8314. Esse teste valida a execução nessa escala; não mede tempo até convergência nem comprova o bônus do trabalho.
+Um teste funcional adicional, separado do bônus apresentado, com 500 cidades circulares, população 100 e 50 gerações levou aproximadamente 0,32 s no ambiente usado. A distância caiu de aproximadamente 6064,97 para 4548,47, ainda muito acima do ótimo de 62,8314. Esse teste valida a execução nessa escala; não mede tempo até convergência nem comprova o bônus do trabalho.

@@ -18,7 +18,7 @@ import subprocess
 import sys
 import time
 
-import matplotlib.pyplot as plt
+import os
 
 # ==============================================================================
 # 1. VARIÁVEIS DE CONFIGURAÇÃO DO PROBLEMA (ALTERE FACILMENTE AQUI)
@@ -72,7 +72,7 @@ CONFIG_VISUAL = {
 
 # Diretórios do projeto
 PASTA_RAIZ = Path(__file__).resolve().parent.parent
-EXECUTAVEL = PASTA_RAIZ / "build" / "ag"
+EXECUTAVEL = PASTA_RAIZ / "build" / ("ag.exe" if os.name == "nt" else "ag")
 PASTA_RESULTADOS_CIRCULAR = PASTA_RAIZ / "experimentos" / "resultados" / "circular"
 PASTA_RESULTADOS_BONUS = PASTA_RAIZ / "experimentos" / "resultados" / "bonus"
 
@@ -270,235 +270,18 @@ def plotar_painel_intermediarias_bonus(coordenadas, historico, caminho_saida):
 
 def gerar_html_interativo(coordenadas, historico, otimo_teorico, titulo, caminho_saida,
                           tem_versao_completa=False, eh_completo=False, eh_bonus=False):
-    """
-    Gera a página offline evolucao_rotas.html nos padrões da Parte 4,
-    com métricas de Ótimo/Erro, controle de velocidade, alternador de rótulos
-    e suporte a link seguro para versão completa.
-    """
-    dados = {
-        "pontos": coordenadas,
-        "historico": historico,
-        "otimo": otimo_teorico,
-        "tem_completo": tem_versao_completa,
-        "eh_completo": eh_completo,
-        "eh_bonus": eh_bonus,
-        "total_cidades": len(coordenadas)
-    }
-
-    # Template HTML puro, responsivo e sem dependências externas
-    template = """<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>__TITULO__</title>
-  <style>
-    body { font: 16px system-ui, -apple-system, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; color: #1e293b; background: #ffffff; }
-    h1 { font-size: 1.5rem; margin-bottom: 6px; }
-    p { margin: 6px 0 14px 0; color: #475569; }
-    .painel-controles { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
-    button { background: #2563eb; color: #ffffff; border: none; padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
-    button:hover { background: #1d4ed8; }
-    button.secundario { background: #64748b; }
-    button.secundario:hover { background: #475569; }
-    .velocidades button { padding: 4px 10px; font-size: 12px; background: #e2e8f0; color: #334155; }
-    .velocidades button.ativo { background: #2563eb; color: #ffffff; }
-    .toggle-rotulos { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #334155; cursor: pointer; margin-left: auto; }
-    .barra-slider { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 8px; }
-    input[type=range] { flex: 1; accent-color: #2563eb; cursor: pointer; }
-    .status-card { background: #f1f5f9; border-left: 4px solid #2563eb; padding: 10px 14px; margin-bottom: 14px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 13.5px; color: #0f172a; }
-    .banner-bonus { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    svg { width: 100%; max-height: 62vh; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: inset 0 0 6px rgba(0,0,0,0.03); }
-    .legenda-topo { font-size: 12px; color: #64748b; text-align: right; margin-top: 4px; }
-  </style>
-</head>
-<body>
-
-  <h1>__TITULO__</h1>
-  <p>Acompanhe a evolução da rota época a época ou use a reprodução automática. O circuito fecha conectando a última cidade à primeira.</p>
-
-  __BANNER_BONUS_HTML__
-
-  <div class="painel-controles">
-    <button id="play">▶ Reproduzir</button>
-    <div class="velocidades">
-      <span style="font-size: 13px; color: #64748b; margin-right: 4px;">Velocidade:</span>
-      <button data-v="0.5">0.5x</button>
-      <button data-v="1" class="ativo">1x</button>
-      <button data-v="2">2x</button>
-      <button data-v="5">5x</button>
-    </div>
-
-    <label class="toggle-rotulos">
-      <input type="checkbox" id="checkRotulos" __CHECKED_ROTULOS__>
-      Exibir IDs das Cidades
-    </label>
-
-    <div class="barra-slider">
-      <label for="geracao" style="font-size: 13px; font-weight: 600;">Geração:</label>
-      <input id="geracao" type="range" min="0" value="0" step="1">
-      <span id="valorGeracao" style="font-family: monospace; font-size: 13px; width: 45px;">0</span>
-    </div>
-  </div>
-
-  <div class="status-card" id="estado" aria-live="polite">Carregando dados...</div>
-
-  <svg viewBox="0 0 640 640" role="img" aria-label="Visualização do circuito"></svg>
-  <div class="legenda-topo">Área normalizada 640x640 com fechamento de aresta na origem</div>
-
-  <script>
-    const dados = __DADOS_JSON__;
-    const slider = document.querySelector('#geracao');
-    const valorGeracao = document.querySelector('#valorGeracao');
-    const svg = document.querySelector('svg');
-    const estado = document.querySelector('#estado');
-    const btnPlay = document.querySelector('#play');
-    const checkRotulos = document.querySelector('#checkRotulos');
-    const btnsVelocidade = document.querySelectorAll('.velocidades button');
-
-    let timer = null;
-    let velocidade = 1;
-    const intervaloBase = 120; // ms
-
-    slider.max = dados.historico.length - 1;
-
-    // Normalização das coordenadas para caber no SVG mantendo proporção
-    const coordsLista = Object.values(dados.pontos);
-    const xs = coordsLista.map(p => p[0]), ys = coordsLista.map(p => p[1]);
-    const xmin = Math.min(...xs), ymin = Math.min(...ys);
-    const largura = Math.max(...xs) - xmin || 1;
-    const altura = Math.max(...ys) - ymin || 1;
-    const escala = 540 / Math.max(largura, altura);
-
-    function xy(id) {
-      const p = dados.pontos[id];
-      return [
-        50 + (p[0] - xmin) * escala,
-        590 - (p[1] - ymin) * escala
-      ];
-    }
-
-    function desenhar() {
-      const idx = Number(slider.value);
-      const reg = dados.historico[idx];
-      valorGeracao.textContent = reg.geracao;
-
-      const rota = reg.rota.trim().split(/\\s+/).map(Number);
-      const fechada = [...rota, rota[0]];
-      const pontosSVG = fechada.map(id => xy(id).join(',')).join(' ');
-
-      const mostrarRotulos = checkRotulos.checked && dados.total_cidades <= 50;
-      const raioPonto = dados.total_cidades > 50 ? 3 : 5;
-
-      let htmlPontos = rota.map(id => {
-        const [x, y] = xy(id);
-        const rotulo = mostrarRotulos ? `<text x="${x + 6}" y="${y - 6}" font-size="12" fill="#0f172a" font-weight="600">${id}</text>` : '';
-        return `<circle cx="${x}" cy="${y}" r="${raioPonto}" fill="#16233a"/>${rotulo}`;
-      }).join('');
-
-      svg.innerHTML = `<polyline fill="none" stroke="#2563eb" stroke-width="2" points="${pontosSVG}"/>` + htmlPontos;
-
-      // Cálculo de métricas
-      const dist = Number(reg.melhor_distancia);
-      const media = Number(reg.distancia_media);
-      let statusTexto = `<b>Geração:</b> ${reg.geracao} | <b>Melhor:</b> ${dist.toFixed(4)} | <b>Média:</b> ${media.toFixed(4)}`;
-
-      if (dados.otimo && dados.otimo > 0) {
-        const erro = Math.max(0, ((dist - dados.otimo) / dados.otimo) * 100);
-        statusTexto += ` | <b>Ótimo Teórico:</b> ${dados.otimo.toFixed(4)} | <b>Erro:</b> <span style="color:${erro === 0 ? '#16a34a' : '#2563eb'}; font-weight:bold">${erro.toFixed(4)}%</span>`;
-      }
-      estado.innerHTML = statusTexto;
-    }
-
-    slider.oninput = desenhar;
-    checkRotulos.onchange = desenhar;
-
-    function parar() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-        btnPlay.textContent = '▶ Reproduzir';
-      }
-    }
-
-    function iniciar() {
-      if (Number(slider.value) >= Number(slider.max)) {
-        slider.value = 0;
-      }
-      btnPlay.textContent = '⏸ Pausar';
-      timer = setInterval(() => {
-        const prox = Number(slider.value) + 1;
-        slider.value = prox;
-        desenhar();
-        if (prox >= Number(slider.max)) {
-          parar();
-        }
-      }, Math.max(20, intervaloBase / velocidade));
-    }
-
-    btnPlay.onclick = () => {
-      if (timer) parar();
-      else iniciar();
-    };
-
-    btnsVelocidade.forEach(b => {
-      b.onclick = () => {
-        btnsVelocidade.forEach(x => x.classList.remove('ativo'));
-        b.classList.add('ativo');
-        velocidade = Number(b.dataset.v);
-        if (timer) {
-          parar();
-          iniciar();
-        }
-      };
-    });
-
-    // Função de clique no botão da versão completa (no bônus)
-    window.acaoVersaoCompleta = function() {
-      if (dados.tem_completo) {
-        if (confirm("Atenção: A versão completa contém todas as 3.000 gerações (~2 MB) e pode exigir maior processamento do navegador.\\n\\nDeseja abrir a versão completa em uma nova aba?")) {
-          window.open('evolucao_rotas_completo.html', '_blank');
-        }
-      } else {
-        alert("A versão completa (3.000 épocas) ainda não foi gerada no disco.\\n\\nPara gerá-la com facilidade:\\n1. Abra o arquivo 'experimentos/executar_parte5.py'\\n2. Altere a variável GERAR_HTML_COMPLETO_BONUS = True\\n3. Execute novamente o script com: python experimentos/executar_parte5.py\\n\\nA versão leve atual contém as gerações de melhora e amostragem periódica perfeitamente representativas.");
-      }
-    };
-
-    // Render inicial
-    desenhar();
-  </script>
-</body>
-</html>"""
-
-    # Banner condicional para o Bônus
-    banner_html = ""
-    if eh_bonus and not eh_completo:
-        banner_html = """
-  <div class="banner-bonus">
-    <span>⚡ <b>Modo Amostragem Rápida:</b> Exibindo épocas de melhora e marcos periódicos para reprodução suave.</span>
-    <button onclick="acaoVersaoCompleta()" class="secundario" style="padding: 5px 12px; font-size: 12px;">🔍 Abrir Versão Completa (3.000 gerações)</button>
-  </div>"""
-    elif eh_bonus and eh_completo:
-        banner_html = """
-  <div class="banner-bonus" style="background: #ecfdf5; border-color: #a7f3d0; color: #065f46;">
-    <span>📁 <b>Modo Completo:</b> Exibindo todas as 3.000 gerações consecutivas do teste de escala.</span>
-  </div>"""
-
-    checked_rotulos = "checked" if len(coordenadas) <= 25 else ""
-    saida_html = (
-        template
-        .replace("__TITULO__", titulo)
-        .replace("__BANNER_BONUS_HTML__", banner_html)
-        .replace("__CHECKED_ROTULOS__", checked_rotulos)
-        .replace("__DADOS_JSON__", json.dumps(dados))
-    )
-    caminho_saida.write_text(saida_html, encoding="utf-8")
+    """Aplica o visual compartilhado; preserva os registros e o benchmark."""
+    from visualizacao import gerar_visualizacao
+    gerar_visualizacao(coordenadas, historico, otimo_teorico, titulo,
+                       caminho_saida, tem_versao_completa and not eh_completo)
 
 # ==============================================================================
 # 6. PIPELINE PRINCIPAL DE EXECUÇÃO
 # ==============================================================================
 
 def main():
+    global plt
+    import matplotlib.pyplot as plt
     compilar_se_necessario()
     tabela_resumo = []
 
